@@ -10,6 +10,8 @@ matplotlib.use('Agg')
 import time
 import base64
 from io import BytesIO
+import tempfile
+
 
 # Configuración de la página
 st.set_page_config(
@@ -747,44 +749,37 @@ else:
         # Animación de la evolución
         if st.checkbox("Mostrar animación de evolución", value=True):
             st.markdown("<h5>Animación de la evolución</h5>", unsafe_allow_html=True)
-            
-            # Crear figura para animación
-            fig, ax = plt.subplots(figsize=(10, 5))
-            
-            bar_colors = sns.color_palette(selected_colormap, num_states)
-            
-            def update_bars(frame):
-                ax.clear()
-                ax.bar(state_names, evolution[frame], color=bar_colors)
-                ax.set_ylim(0, 1)
-                ax.set_title(f'Distribución en el paso {frame}')
-                ax.set_ylabel('Probabilidad')
-                
-            anim = FuncAnimation(
-                fig, 
-                update_bars, 
-                frames=n_steps+1,
-                interval=500/animation_speed,
-                repeat=True
-            )
-            
-            # Guardar animación a un gif en memoria
-            buffer = BytesIO()
-            import tempfile
-            from matplotlib.animation import PillowWriter
 
-# Crear archivo temporal .gif
-        with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmpfile:
-            anim.save(tmpfile.name, writer='pillow', fps=int(2 * animation_speed))
-            tmpfile.seek(0)
-            gif_data = base64.b64encode(tmpfile.read()).decode("utf-8")
+            if "gif_data" not in st.session_state:
+                fig, ax = plt.subplots(figsize=(10, 5))
+                bar_colors = sns.color_palette(selected_colormap, num_states)
 
-            
-            # Mostrar animación en HTML
+                def update_bars(frame):
+                    ax.clear()
+                    ax.bar(state_names, evolution[frame], color=bar_colors)
+                    ax.set_ylim(0, 1)
+                    ax.set_title(f'Distribución en el paso {frame}')
+                    ax.set_ylabel('Probabilidad')
+
+                anim = FuncAnimation(
+                    fig, 
+                    update_bars, 
+                    frames=n_steps+1,
+                    interval=500/animation_speed,
+                    repeat=True
+                )
+
+                from matplotlib.animation import PillowWriter
+                with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmpfile:
+                    anim.save(tmpfile.name, writer='pillow', fps=int(2 * animation_speed))
+                    tmpfile.seek(0)
+                    st.session_state.gif_data = base64.b64encode(tmpfile.read()).decode("utf-8")
+
             st.markdown(
-                f'<img src="data:image/gif;base64,{gif_data}" alt="Animación" width="100%">',
+                f'<img src="data:image/gif;base64,{st.session_state.gif_data}" alt="Animación" width="100%">',
                 unsafe_allow_html=True
             )
+
             
     # Pestaña de estado estacionario
     with tabs[2]:
